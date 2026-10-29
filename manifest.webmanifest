@@ -1,0 +1,13 @@
+{
+  "name": "Document & Passport Photo Studio",
+  "short_name": "Doc Photo",
+  "description": "Document scanner, A4/A3 passport photo sheets, photo editor and PDF sharing.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f6fb",
+  "theme_color": "#1459c7",
+  "icons": [
+    {"src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}
+  ]
+}

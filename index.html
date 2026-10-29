@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Document & Passport Photo Studio</title>
+<style>
+:root{--blue:#1459c7;--bg:#f3f6fb;--card:#fff;--ink:#172033;--muted:#637083}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:linear-gradient(120deg,#1248a6,#2678e8);color:#fff;padding:22px 16px}
+header h1{margin:0 0 6px;font-size:22px}header p{margin:0;font-size:14px;opacity:.94}
+main{max-width:900px;margin:auto;padding:14px;display:grid;gap:14px}
+.card{background:var(--card);padding:16px;border-radius:16px;box-shadow:0 3px 14px #15294a12}
+h2{font-size:18px;margin:0 0 12px}.row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+button,.btn,select,input[type=file]{font:inherit}button,.btn{border:0;border-radius:10px;background:var(--blue);color:#fff;padding:10px 13px;cursor:pointer;display:inline-block;text-align:center}
+button.secondary,.btn.secondary{background:#e8eef9;color:#183b72}button.dark{background:#27364d}
+input[type=file]{max-width:100%;padding:8px;background:#f7f9fc;border-radius:8px}
+label{display:block;font-size:13px;color:var(--muted);margin:10px 0 5px}
+input[type=range]{width:100%}select,input[type=text]{padding:9px;border:1px solid #ccd5e2;border-radius:8px;background:#fff;max-width:100%}
+.preview{width:100%;max-height:440px;object-fit:contain;background:#e9edf3;border-radius:10px;margin-top:10px}
+.small{font-size:12px;color:var(--muted);line-height:1.5}.status{font-size:13px;color:#1459c7;margin-top:8px;min-height:18px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.slot{border:1px dashed #b7c5d8;border-radius:12px;padding:12px;min-width:0}
+.filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.filter{background:#eef3fb;color:#1a3766;padding:8px;border-radius:8px;font-size:13px}
+canvas{max-width:100%;height:auto;border:1px solid #d9e0e9;background:white}
+footer{text-align:center;color:var(--muted);padding:10px 18px 24px;font-size:12px}
+@media(min-width:700px){main{grid-template-columns:1fr 1fr}.wide{grid-column:1/-1}.filters{grid-template-columns:repeat(4,minmax(0,1fr))}}
+</style>
+
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#1459c7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Doc Photo Studio">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+
+<script>
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(console.error));
+}
+</script>
+</head>
+<body>
+<header><h1>Document & Passport Photo Studio</h1><p>Document scan • Front/Back PDF • Passport photo sheet • Photo editing</p></header>
+<main>
+<section class="card wide">
+<h2>1. Document Scanner — Front और Back</h2>
+<div class="two">
+ <div class="slot"><b>Front फोटो</b><label for="frontFile">कैमरा से फोटो लें या अपलोड करें</label><input id="frontFile" type="file" accept="image/*" capture="environment"><img id="frontPreview" class="preview" alt="Front preview" hidden></div>
+ <div class="slot"><b>Back फोटो</b><label for="backFile">पीछे की फोटो लें या अपलोड करें</label><input id="backFile" type="file" accept="image/*" capture="environment"><img id="backPreview" class="preview" alt="Back preview" hidden></div>
+</div>
+<div class="row" style="margin-top:12px"><button id="docPdf">Front + Back को A4 PDF बनाएं</button><button class="secondary" id="saveFront">Front सेव करें</button><button class="secondary" id="saveBack">Back सेव करें</button></div>
+<div class="row" style="margin-top:8px"><button class="secondary" id="shareDoc">WhatsApp / Share</button><button class="secondary" id="emailDoc">Email</button></div>
+<p class="small">PDF में Front और Back अलग-अलग A4 पेज पर आएंगे। फोन के ब्राउज़र में समर्थित होने पर Share बटन PDF शेयर करेगा। अन्यथा PDF डाउनलोड करके WhatsApp/Email में अटैच करें।</p>
+<div id="docStatus" class="status"></div>
+</section>
+
+<section class="card">
+<h2>2. Photo Editor</h2>
+<label for="editFile">फोटो चुनें / कैमरा खोलें</label><input id="editFile" type="file" accept="image/*" capture="environment">
+<canvas id="editCanvas" class="preview" width="600" height="750" aria-label="Edited photo preview"></canvas>
+<div class="row"><button id="rotateBtn" class="secondary">90° Rotate</button><button id="resetBtn" class="secondary">Reset</button><button id="saveEdited">Edited फोटो सेव करें</button></div>
+<label>Brightness <span id="brightVal">100%</span></label><input id="brightness" type="range" min="40" max="180" value="100">
+<label>Contrast <span id="contrastVal">100%</span></label><input id="contrast" type="range" min="40" max="200" value="100">
+<label>Saturation <span id="satVal">100%</span></label><input id="saturation" type="range" min="0" max="200" value="100">
+<label>Sharpness / Clarity (preview enhancement)</label><input id="sharpness" type="range" min="0" max="100" value="0">
+<label>20 filters</label><div id="filters" class="filters"></div>
+<div class="row" style="margin-top:10px"><button id="enhanceDoc">Document Enhance</button><button id="grayBtn" class="secondary">Black & White</button></div>
+<p class="small">Document Enhance contrast और grayscale को बढ़ाता है। यह OCR या कानूनी प्रमाणिकता की गारंटी नहीं देता।</p>
+</section>
+
+<section class="card">
+<h2>3. Passport Photo Sheet — A4 / A3</h2>
+<label for="passportFile">एक फोटो अपलोड करें</label><input id="passportFile" type="file" accept="image/*" capture="user">
+<img id="passportPreview" class="preview" alt="Passport photo preview" hidden>
+<div class="two">
+ <div><label for="paperSize">Paper size</label><select id="paperSize"><option value="A4">A4</option><option value="A3">A3</option></select></div>
+ <div><label for="photoSize">एक फोटो का आकार</label><select id="photoSize"><option value="35x45">35 × 45 mm (सामान्य पासपोर्ट अनुपात)</option><option value="25x35">25 × 35 mm</option><option value="custom">Custom 40 × 50 mm</option></select></div>
+</div>
+<div class="two">
+ <div><label for="columns">हर पंक्ति में फोटो</label><select id="columns"><option value="6">6 फोटो (A4 default)</option><option value="3">3 फोटो (A3 default)</option><option value="4">4 फोटो</option><option value="5">5 फोटो</option><option value="8">8 फोटो</option></select></div>
+ <div><label for="gap">फोटो के बीच gap (mm)</label><select id="gap"><option value="3">3 mm</option><option value="2">2 mm</option><option value="5">5 mm</option><option value="0">0 mm</option></select></div>
+</div>
+<div class="row" style="margin-top:12px"><button id="makeSheet">Printable PDF बनाएं</button><button class="secondary" id="saveSheetPng">Sheet PNG सेव करें</button></div>
+<canvas id="sheetCanvas" width="794" height="1123" class="preview" aria-label="Print sheet preview"></canvas>
+<div class="row"><button class="secondary" id="shareSheet">WhatsApp / Share Sheet</button><button class="secondary" id="emailSheet">Email Sheet</button></div>
+<div id="sheetStatus" class="status"></div>
+<p class="small">A4 पर 6 और A3 पर 3 कॉलम default हैं, जैसा आपने बताया। कॉलम की संख्या बदली जा सकती है। प्रिंट करते समय “Actual size / 100%” चुनें; “Fit to page” आकार बदल सकता है। फोटो का अंतिम आकार और पंक्तियों की संख्या पेपर की उपलब्ध जगह पर निर्भर है।</p>
+</section>
+
+<section class="card wide">
+<h2>4. इस्तेमाल करने का तरीका</h2>
+<ol><li>Front और Back में कैमरा से फोटो लें या गैलरी से चुनें।</li><li>“Front + Back को A4 PDF बनाएं” दबाएं।</li><li>पासपोर्ट फोटो के लिए फोटो अपलोड करें, A4/A3 और आकार चुनें, फिर Printable PDF बनाएं।</li><li>WhatsApp/Share में PDF भेजें; यदि फोन सीधे फाइल शेयर न करे तो पहले PDF डाउनलोड करें और WhatsApp में Document के रूप में जोड़ें।</li></ol>
+<p class="small"><b>Privacy:</b> यह शुरुआती browser prototype है। आपकी तस्वीरें किसी अपने server पर अपलोड नहीं होतीं; processing इसी browser में होती है। CDN से PDF library लोड करने के लिए इंटरनेट चाहिए।</p>
+</section>
+</main>
+<footer>Prototype • Android Chrome में खोलकर इस्तेमाल करें • महत्वपूर्ण दस्तावेज़ों की PDF सेव करके जांच लें</footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+let frontImg=null,backImg=null,editImg=null,passportImg=null,rotation=0,originalEdit=null,lastDocBlob=null,lastSheetBlob=null;
+function loadFile(file,cb){if(!file)return;const url=URL.createObjectURL(file);const img=new Image();img.onload=()=>{cb(img);URL.revokeObjectURL(url)};img.onerror=()=>alert('यह फोटो नहीं खुल पाई। दूसरी image चुनें।');img.src=url}
+function setPreview(imgEl,img){imgEl.src=img.src;imgEl.hidden=false}
+function drawContain(ctx,img,x,y,w,h,white=true){if(white){ctx.fillStyle='#fff';ctx.fillRect(x,y,w,h)}const r=Math.min(w/img.width,h/img.height);const dw=img.width*r,dh=img.height*r;ctx.drawImage(img,x+(w-dw)/2,y+(h-dh)/2,dw,dh)}
+function dataURLBlob(data){const a=data.split(',');const mime=a[0].match(/:(.*?);/)[1];const b=atob(a[1]);const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return new Blob([u],{type:mime})}
+function downloadBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500)}
+function pdfReady(){return !!(window.jspdf&&window.jspdf.jsPDF)}
+function makeDocBlob(){if(!frontImg&&!backImg){alert('पहले Front या Back फोटो लें।');return null}if(!pdfReady()){alert('PDF library लोड नहीं हुई। इंटरनेट चालू करके पेज refresh करें।');return null}
+ const {jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:'p',unit:'mm',format:'a4'});let added=false;
+ [frontImg,backImg].forEach((img,i)=>{if(!img)return;if(added)pdf.addPage('a4','p');const c=document.createElement('canvas');c.width=img.width;c.height=img.height;drawContain(c.getContext('2d'),img,0,0,c.width,c.height);pdf.addImage(c.toDataURL('image/jpeg',.94),'JPEG',8,8,194,281,'','FAST');added=true});
+ return pdf.output('blob')}
+$('frontFile').onchange=e=>loadFile(e.target.files[0],img=>{frontImg=img;setPreview($('frontPreview'),img);$('docStatus').textContent='Front फोटो तैयार है।'});
+$('backFile').onchange=e=>loadFile(e.target.files[0],img=>{backImg=img;setPreview($('backPreview'),img);$('docStatus').textContent='Back फोटो तैयार है।'});
+$('docPdf').onclick=()=>{const b=makeDocBlob();if(b){lastDocBlob=b;downloadBlob(b,'document-front-back-A4.pdf');$('docStatus').textContent='PDF तैयार और डाउनलोड हो गई।'}};
+$('saveFront').onclick=()=>frontImg?downloadBlob(dataURLBlob(imageData(frontImg)),'document-front.jpg'):alert('पहले Front फोटो लें।');
+$('saveBack').onclick=()=>backImg?downloadBlob(dataURLBlob(imageData(backImg)),'document-back.jpg'):alert('पहले Back फोटो लें।');
+function imageData(img){const c=document.createElement('canvas');c.width=img.width;c.height=img.height;c.getContext('2d').drawImage(img,0,0);return c.toDataURL('image/jpeg',.95)}
+async function shareBlob(blob,name,title){if(!blob){alert('पहले PDF बनाएं।');return}const file=new File([blob],name,{type:'application/pdf'});if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title});return}catch(e){if(e.name==='AbortError')return}}
+ downloadBlob(blob,name);alert('PDF डाउनलोड की गई। अब WhatsApp खोलकर Attach > Document चुनें।')}
+$('shareDoc').onclick=()=>shareBlob(lastDocBlob,'document-front-back-A4.pdf','Document PDF');
+$('emailDoc').onclick=()=>{if(!lastDocBlob){alert('पहले PDF बनाएं।');return}downloadBlob(lastDocBlob,'document-front-back-A4.pdf');location.href='mailto:?subject='+encodeURIComponent('Scanned document PDF')+'&body='+encodeURIComponent('कृपया डाउनलोड की गई document-front-back-A4.pdf फाइल इस ईमेल में attach करें।')};
+
+const filterDefs=[
+['Original','none'],['B&W','grayscale(1)'],['Sepia','sepia(1)'],['Warm','sepia(.35) saturate(1.25)'],['Cool','hue-rotate(15deg) saturate(.9)'],['Vivid','saturate(1.6)'],['Soft','contrast(.9) brightness(1.05)'],['High Contrast','contrast(1.45)'],['Bright','brightness(1.18)'],['Dark','brightness(.82)'],['Vintage','sepia(.45) contrast(.9)'],['Fade','contrast(.8) brightness(1.1) saturate(.7)'],['Mono Blue','grayscale(.8) hue-rotate(180deg)'],['Green Tint','hue-rotate(55deg) saturate(1.2)'],['Rose','hue-rotate(320deg) saturate(1.2)'],['Dramatic','contrast(1.7) saturate(.8)'],['Matte','contrast(.9) saturate(.8)'],['Punch','contrast(1.2) saturate(1.3)'],['Clean','brightness(1.04) contrast(1.12)'],['Document','grayscale(1) contrast(1.55) brightness(1.08)']
+];
+let selectedFilter='none';
+filterDefs.forEach(([name,css])=>{const b=document.createElement('button');b.className='filter';b.textContent=name;b.onclick=()=>{selectedFilter=css;renderEdit()};$('filters').appendChild(b)});
+function renderEdit(){const c=$('editCanvas'),ctx=c.getContext('2d');c.width=600;c.height=750;ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);if(!editImg)return;ctx.save();ctx.filter=`${selectedFilter} brightness(${$('brightness').value}%) contrast(${$('contrast').value}%) saturate(${$('saturation').value}%)`;ctx.translate(c.width/2,c.height/2);ctx.rotate(rotation*Math.PI/180);let iw=editImg.width,ih=editImg.height;if(Math.abs(rotation)%180===90)[iw,ih]=[ih,iw];const r=Math.min(c.width/iw,c.height/ih);ctx.drawImage(editImg,-iw*r/2,-ih*r/2,iw*r,ih*r);ctx.restore();$('brightVal').textContent=$('brightness').value+'%';$('contrastVal').textContent=$('contrast').value+'%';$('satVal').textContent=$('saturation').value+'%'}
+$('editFile').onchange=e=>loadFile(e.target.files[0],img=>{editImg=img;originalEdit=img;rotation=0;selectedFilter='none';$('brightness').value=100;$('contrast').value=100;$('saturation').value=100;renderEdit()});
+['brightness','contrast','saturation','sharpness'].forEach(id=>$(id).oninput=renderEdit);
+$('rotateBtn').onclick=()=>{rotation=(rotation+90)%360;renderEdit()};
+$('resetBtn').onclick=()=>{rotation=0;selectedFilter='none';$('brightness').value=100;$('contrast').value=100;$('saturation').value=100;renderEdit()};
+$('enhanceDoc').onclick=()=>{selectedFilter='grayscale(1)';$('brightness').value=108;$('contrast').value=165;$('saturation').value=0;renderEdit()};
+$('grayBtn').onclick=()=>{selectedFilter='grayscale(1)';renderEdit()};
+$('saveEdited').onclick=()=>{if(!editImg){alert('पहले फोटो चुनें।');return}downloadBlob(dataURLBlob($('editCanvas').toDataURL('image/jpeg',.95)),'edited-photo.jpg')};
+
+$('passportFile').onchange=e=>loadFile(e.target.files[0],img=>{passportImg=img;setPreview($('passportPreview'),img);drawSheet()});
+$('paperSize').onchange=()=>{const p=$('paperSize').value;$('columns').value=p==='A4'?'6':'3';drawSheet()};
+['photoSize','columns','gap'].forEach(id=>$(id).onchange=drawSheet);
+function mmToPx(mm,dpi=150){return mm*dpi/25.4}
+function sheetConfig(){const paper=$('paperSize').value;const dims=paper==='A4'?[210,297]:[297,420];const size=$('photoSize').value;const photo=size==='35x45'?[35,45]:size==='25x35'?[25,35]:[40,50];return {paper,dims,photo,cols:+$('columns').value,gap:+$('gap').value}}
+function paintSheet(canvas){const cfg=sheetConfig(),dpi=150;canvas.width=Math.round(mmToPx(cfg.dims[0],dpi));canvas.height=Math.round(mmToPx(cfg.dims[1],dpi));const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);if(!passportImg){ctx.fillStyle='#6b7280';ctx.font='20px sans-serif';ctx.fillText('एक फोटो अपलोड करें',30,50);return}
+ const margin=5,gap=cfg.gap,photoW=cfg.photo[0],photoH=cfg.photo[1],usableW=cfg.dims[0]-2*margin;const cols=cfg.cols;const totalW=cols*photoW+(cols-1)*gap;if(totalW>usableW){ctx.fillStyle='#b42318';ctx.font='16px sans-serif';ctx.fillText('इस फोटो आकार के लिए कॉलम ज्यादा हैं। कम कॉलम चुनें।',20,35);return}
+ const rows=Math.floor((cfg.dims[1]-2*margin+gap)/(photoH+gap));const startX=(cfg.dims[0]-totalW)/2;const totalH=rows*photoH+(rows-1)*gap;const startY=(cfg.dims[1]-totalH)/2;
+ for(let r=0;r<rows;r++)for(let col=0;col<cols;col++){const x=mmToPx(startX+col*(photoW+gap),dpi),y=mmToPx(startY+r*(photoH+gap),dpi),w=mmToPx(photoW,dpi),h=mmToPx(photoH,dpi);ctx.fillStyle='#fff';ctx.fillRect(x,y,w,h);drawContain(ctx,passportImg,x,y,w,h);ctx.strokeStyle='#aab2bd';ctx.lineWidth=1;ctx.strokeRect(x,y,w,h)}
+}
+function drawSheet(){paintSheet($('sheetCanvas'))}
+$('makeSheet').onclick=()=>{if(!passportImg){alert('पहले फोटो अपलोड करें।');return}if(!pdfReady()){alert('PDF library लोड नहीं हुई। इंटरनेट चालू करके पेज refresh करें।');return}const cfg=sheetConfig();const orient=cfg.dims[0]>cfg.dims[1]?'l':'p';const {jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:orient,unit:'mm',format:cfg.paper.toLowerCase()});const c=$('sheetCanvas');paintSheet(c);pdf.addImage(c.toDataURL('image/jpeg',.95),'JPEG',0,0,cfg.dims[0],cfg.dims[1]);lastSheetBlob=pdf.output('blob');downloadBlob(lastSheetBlob,'passport-photo-'+cfg.paper+'.pdf');$('sheetStatus').textContent=cfg.paper+' printable PDF तैयार है।'};
+$('saveSheetPng').onclick=()=>{if(!passportImg){alert('पहले फोटो अपलोड करें।');return}drawSheet();$('sheetCanvas').toBlob(b=>downloadBlob(b,'passport-photo-sheet.png'))};
+$('shareSheet').onclick=()=>shareBlob(lastSheetBlob,'passport-photo-sheet.pdf','Passport photo sheet');
+$('emailSheet').onclick=()=>{if(!lastSheetBlob){alert('पहले Printable PDF बनाएं।');return}downloadBlob(lastSheetBlob,'passport-photo-sheet.pdf');location.href='mailto:?subject='+encodeURIComponent('Passport photo print sheet')+'&body='+encodeURIComponent('कृपया डाउनलोड की गई passport-photo-sheet.pdf फाइल इस ईमेल में attach करें।')};
+drawSheet();renderEdit();
+</script>
+</body>
+</html>
